@@ -35,21 +35,23 @@ int main() {
 
     std::cout << "Server listening on port 8080 (hostname: " << hostname << ")" << std::endl;
 
-    while (true) {
-        int client_fd = accept(server_fd, NULL, NULL);
-        if (client_fd < 0) continue;
+while (true) {
+    int client_fd = accept(server_fd, NULL, NULL);
+    if (client_fd < 0) continue;
 
-        std::string body = "Served by backend: " + std::string(hostname) + "\n";
+    sleep(2);  // ⭐ IMPORTANT: creates overlapping connections
 
-        std::string response = "HTTP/1.1 200 OK\r\n";
-        response += "Content-Type: text/plain\r\n";
-        response += "Content-Length: " + std::to_string(body.size()) + "\r\n";
-        response += "Connection: close\r\n\r\n";
-        response += body;
+    std::string body = "Served by backend: " + std::string(hostname) + "\n";
 
-        send(client_fd, response.c_str(), response.length(), 0);
-        close(client_fd);
-    }
+    std::string response = "HTTP/1.1 200 OK\r\n";
+    response += "Content-Type: text/plain\r\n";
+    response += "Content-Length: " + std::to_string(body.size()) + "\r\n";
+    response += "Connection: close\r\n\r\n";
+    response += body;
+
+    send(client_fd, response.c_str(), response.length(), 0);
+    close(client_fd);
+}
 
     return 0;
 }
