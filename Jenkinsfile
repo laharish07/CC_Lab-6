@@ -37,32 +37,33 @@ pipeline {
             }
         }
 
-        stage('Deploy NGINX Load Balancer') {
-            steps {
-                sh '''
-                echo "Starting NGINX load balancer..."
+stage('Deploy NGINX Load Balancer') {
+    steps {
+        sh '''
+        echo "Starting NGINX load balancer..."
 
-                docker rm -f nginx-lb || true
+        docker rm -f nginx-lb || true
 
-                # extra wait to avoid DNS race
-                sleep 5
+        # 🔥 CRITICAL: wait longer for Docker DNS
+        sleep 10
 
-                docker run -d \
-                  --name nginx-lb \
-                  --network app-network \
-                  -p 80:80 \
-                  nginx
+        # 🔥 verify backend DNS before nginx starts
+        echo "Checking backend DNS..."
+        docker run --rm --network app-network busybox nslookup backend1
 
-                echo "Copying nginx config..."
-                docker cp nginx/default.conf nginx-lb:/etc/nginx/conf.d/default.conf
+        docker run -d \
+          --name nginx-lb \
+          --network app-network \
+          -p 80:80 \
+          nginx
 
-                # CRITICAL: restart so nginx re-resolves backend DNS
-                docker restart nginx-lb
+        docker cp nginx/default.conf nginx-lb:/etc/nginx/conf.d/default.conf
 
-                echo "NGINX load balancer deployed."
-                '''
-            }
-        }
+        # full restart to ensure upstream resolution
+        docker restart nginx-lb
+        '''
+    }
+}
     }
 
     post {
