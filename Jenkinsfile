@@ -14,28 +14,31 @@ pipeline {
             }
         }
 
-        stage('Deploy Backend Containers') {
-            steps {
-                sh '''
-                echo "Recreating clean Docker network..."
-
-                # stop old containers
-                docker rm -f backend1 backend2 nginx-lb || true
-
-                # remove stale network (VERY IMPORTANT)
-                docker network rm app-network || true
-                docker network create app-network
-
-                echo "Starting backend containers..."
-
-                docker run -d --name backend1 --network app-network backend-app
-                docker run -d --name backend2 --network app-network backend-app
-
-                # allow Docker DNS to stabilize
-                sleep 5
-                '''
-            }
         }
+    stage('Deploy Backend Containers') {
+    steps {
+        sh '''
+        echo "Recreating clean Docker network..."
+
+        # Force remove containers if they exist
+        docker rm -f backend1 || true
+        docker rm -f backend2 || true
+        docker rm -f nginx-lb || true
+
+        # Remove stale network
+        docker network rm app-network || true
+        docker network create app-network
+
+        echo "Starting backend containers..."
+
+        docker run -d --name backend1 --network app-network backend-app
+        docker run -d --name backend2 --network app-network backend-app
+
+        # allow DNS to stabilize
+        sleep 5
+        '''
+    }
+}
 
 stage('Deploy NGINX Load Balancer') {
     steps {
