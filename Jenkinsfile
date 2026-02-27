@@ -7,6 +7,7 @@ pipeline {
             steps {
                 sh '''
                 echo "Building backend image..."
+
                 docker rmi -f backend-app || true
                 docker build -t backend-app backend
                 '''
@@ -16,15 +17,21 @@ pipeline {
         stage('Deploy Backend Containers') {
             steps {
                 sh '''
-                echo "Starting backend containers..."
+                echo "Recreating clean Docker network..."
 
-                docker network create app-network || true
-                docker rm -f backend1 backend2 || true
+                # stop old containers
+                docker rm -f backend1 backend2 nginx-lb || true
+
+                # remove stale network (VERY IMPORTANT)
+                docker network rm app-network || true
+                docker network create app-network
+
+                echo "Starting backend containers..."
 
                 docker run -d --name backend1 --network app-network backend-app
                 docker run -d --name backend2 --network app-network backend-app
 
-                # wait so Docker DNS registers containers
+                # allow Docker DNS to stabilize
                 sleep 5
                 '''
             }
@@ -37,7 +44,7 @@ pipeline {
 
                 docker rm -f nginx-lb || true
 
-                # extra wait to avoid upstream DNS race
+                # extra wait to avoid DNS race
                 sleep 5
 
                 docker run -d \
